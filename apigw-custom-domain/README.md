@@ -1,14 +1,17 @@
-# Welcome to your CDK TypeScript project!
+## How to deploy
 
-This is a blank project for TypeScript development with CDK.
+1. Deploy Route53 public hosted zone.
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+```
+npm run build
+cdk deploy Route53Stack
+```
 
-## Useful commands
+2. Set DNS server name on the site where you acquired your domain.
 
- * `npm run build`   compile typescript to js
- * `npm run watch`   watch for changes and compile
- * `npm run test`    perform the jest unit tests
- * `cdk deploy`      deploy this stack to your default AWS account/region
- * `cdk diff`        compare deployed stack with current state
- * `cdk synth`       emits the synthesized CloudFormation template
+3. Deploy ApigwStack. CertificateStack and LambdaStack are deployed automatically because ApigwStack depends on these Stacks.
+Notice: CertificateStack stops temporarily because ACM DNS valification takes a few minutes.
+
+```
+cdk deploy ApigwStack
+```
