@@ -18,40 +18,8 @@ export class LambdaStack extends cdk.Stack {
       memorySize: 256
     });
 
-
+    const sampleIntegration = new apigw.LambdaIntegration(sampleFunction);
     const sampleResource = props.apigw.root.addResource('samples');
-    sampleResource.addMethod('GET', new apigw.LambdaIntegration(sampleFunction, {
-      connectionType: apigw.ConnectionType.INTERNET,
-      requestTemplates: {
-        'application/json': "$input.json('$')"
-      },
-      integrationResponses: [
-        {
-          statusCode: '200',
-          contentHandling: apigw.ContentHandling.CONVERT_TO_TEXT,
-          responseParameters: {
-            'method.response.header.Access-Control-Allow-Headers': "'Origin,Content-Type,Authorization'",
-            'method.response.header.Access-Control-Allow-Methods': "'GET,OPTIONS'",
-            'method.response.header.Access-Control-Allow-Origin': "'*'"
-          },
-          responseTemplates: {
-            'application/json': "$input.json('$')"
-          }
-        },
-      ],
-      passthroughBehavior: apigw.PassthroughBehavior.WHEN_NO_MATCH,
-      proxy: false,
-    }), {
-      methodResponses: [
-        {
-          statusCode: '200',
-          responseParameters: {
-            'method.response.header.Access-Control-Allow-Headers': true,
-            'method.response.header.Access-Control-Allow-Methods': true,
-            'method.response.header.Access-Control-Allow-Origin': true
-          }
-        }
-      ]
-    });
+    sampleResource.addMethod('GET', sampleIntegration);
   }
 }
