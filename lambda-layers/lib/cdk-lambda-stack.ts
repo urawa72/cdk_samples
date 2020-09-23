@@ -10,12 +10,12 @@ export class CdkLambdaStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props: ApigwProps) {
     super(scope, id, props);
 
-    const layer = new lambda.LayerVersion(this, `Layers-${this.stackName}`, {
+    const layer = new lambda.LayerVersion(this, 'Layers', {
       code: lambda.AssetCode.fromAsset('layers'),
       compatibleRuntimes: [lambda.Runtime.NODEJS_12_X]
     });
 
-    const calcFunction = new lambda.Function(this, `CalcFunction-${this.stackName}`, {
+    const calcFunction = new lambda.Function(this, 'CalcFunction', {
       code: lambda.Code.fromAsset('lambda'),
       layers: [layer],
       functionName: 'calcFunction',

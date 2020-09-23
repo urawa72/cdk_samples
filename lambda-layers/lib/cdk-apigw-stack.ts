@@ -8,7 +8,7 @@ export class CdkApigwStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    this.restApi = new apigw.RestApi(this, `RestApi-${this.stackName}`, {
+    this.restApi = new apigw.RestApi(this, 'RestApi', {
       restApiName: 'calc',
       deployOptions: {
         stageName: 'dev'
