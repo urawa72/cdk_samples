@@ -1,5 +1,4 @@
 import * as cdk from '@aws-cdk/core';
-import * as acm from '@aws-cdk/aws-certificatemanager';
 import * as apigw from '@aws-cdk/aws-apigateway';
 
 export class CdkApigwStack extends cdk.Stack {

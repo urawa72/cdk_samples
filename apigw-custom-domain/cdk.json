@@ -5,7 +5,7 @@
     "aws-cdk:enableDiffNoFail": "true",
     "@aws-cdk/core:stackRelativeExports": "true",
     "sample": {
-      "zoneName": "",
+      "zoneName": "urawa72.ga",
       "hostedZoneId": "",
       "certificateArn": ""
     }

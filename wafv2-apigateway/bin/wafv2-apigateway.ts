@@ -1,7 +1,14 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
 import * as cdk from '@aws-cdk/core';
-import { Wafv2ApigatewayStack } from '../lib/wafv2-apigateway-stack';
+import { ApigwLambdaStack } from '../lib/apigw-lambda-stack';
+import { Wafv2Stack } from '../lib/wafv2-stack';
 
 const app = new cdk.App();
-new Wafv2ApigatewayStack(app, 'Wafv2ApigatewayStack');
+
+const stageName: string = app.node.tryGetContext('stageName');
+
+if (stageName === 'dev') {
+  const api = new ApigwLambdaStack(app, 'ApigwLambdaStack');
+  new Wafv2Stack(app, 'Wafv2Stack', api.restApi.restApiId);
+}

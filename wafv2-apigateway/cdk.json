@@ -3,6 +3,11 @@
   "context": {
     "@aws-cdk/core:enableStackNameDuplicates": "true",
     "aws-cdk:enableDiffNoFail": "true",
-    "@aws-cdk/core:stackRelativeExports": "true"
+    "@aws-cdk/core:stackRelativeExports": "true",
+    "dev": {
+      "stage": "dev",
+      "whiteIpAddress": [
+      ]
+    }
   }
 }
