@@ -8,7 +8,5 @@ const app = new cdk.App();
 
 const stageName: string = app.node.tryGetContext('stageName');
 
-if (stageName === 'dev') {
-  const api = new ApigwLambdaStack(app, 'ApigwLambdaStack');
-  new Wafv2Stack(app, 'Wafv2Stack', api.restApi.restApiId);
-}
+const api = new ApigwLambdaStack(app, 'ApigwLambdaStack');
+new Wafv2Stack(app, 'Wafv2Stack', api.restApi.restApiId);

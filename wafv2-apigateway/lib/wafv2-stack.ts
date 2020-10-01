@@ -2,24 +2,19 @@ import * as cdk from '@aws-cdk/core';
 import * as apigw from '@aws-cdk/aws-apigateway';
 import * as waf from '@aws-cdk/aws-wafv2';
 
-interface Env {
-  stage: string;
-  whiteIpAddress: string[];
-}
-
 export class Wafv2Stack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, restApiId: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const env: Env = this.node.tryGetContext('dev');
-
+    // IPアドレス制限のためのIPアドレスセット
     const wafIPSet = new waf.CfnIPSet(this, 'TestWafIPSet', {
       name: 'TestWafIpSet',
       ipAddressVersion: 'IPV4',
       scope: 'REGIONAL',
-      addresses: env.whiteIpAddress
+      addresses: ['192.168.0.1/32']
     });
 
+    // WebACL本体
     const webAcl = new waf.CfnWebACL(this, 'TestWebAcl', {
       defaultAction: { block: {} },
       name: 'TestWafWebAcl',
@@ -48,7 +43,8 @@ export class Wafv2Stack extends cdk.Stack {
       ],
     });
 
-    const arn = `arn:aws:apigateway:ap-northeast-1::/restapis/${restApiId}/stages/${env.stage}`;
+    // WAFにAPI Gatewayを関連づける
+    const arn = `arn:aws:apigateway:ap-northeast-1::/restapis/${restApiId}/stages/dev`;
     const association = new waf.CfnWebACLAssociation(this, 'TestWebAclAssociation', {
       resourceArn: arn,
       webAclArn: webAcl.attrArn
