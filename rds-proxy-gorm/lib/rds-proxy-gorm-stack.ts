@@ -10,12 +10,10 @@ export class RdsProxyGormStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // RDS needs to be setup in a VPC
     const vpc = new ec2.Vpc(this, 'Vpc', {
-      maxAzs: 2, // Default is all AZs in the region
+      maxAzs: 2,
     });
 
-    // We need this security group to add an ingress rule and allow our lambda to query the proxy
     const lambdaToRDSProxyGroup = new ec2.SecurityGroup(
       this,
       'Lambda to RDS Proxy Connection',
@@ -24,7 +22,6 @@ export class RdsProxyGormStack extends cdk.Stack {
       }
     );
 
-    // We need this security group to allow our proxy to query our MySQL Instance
     const dbConnectionGroup = new ec2.SecurityGroup(
       this,
       'Proxy to DB Connection',
@@ -45,7 +42,6 @@ export class RdsProxyGormStack extends cdk.Stack {
 
     const databaseUsername = 'syscdk';
 
-    // Dynamically generate the username and password, then store in secrets manager
     const databaseCredentialsSecret = new secrets.Secret(
       this,
       'DBCredentialsSecret',
@@ -83,6 +79,19 @@ export class RdsProxyGormStack extends cdk.Stack {
     //   removalPolicy: cdk.RemovalPolicy.DESTROY,
     //   deletionProtection: false,
     // });
+    //
+    const parameterGroup = new rds.ParameterGroup(this, 'ParameterGroup', {
+      engine: rds.DatabaseInstanceEngine.mysql({
+        version: rds.MysqlEngineVersion.VER_5_7_30,
+      }),
+      parameters: {
+        character_set_client: 'utf8mb4',
+        character_set_connection: 'utf8mb4',
+        character_set_server: 'utf8mb4',
+        character_set_results: 'utf8mb4',
+        character_set_database: 'utf8mb4',
+      },
+    });
 
     const rdsInstance = new rds.DatabaseInstance(this, 'DBInstance', {
       engine: rds.DatabaseInstanceEngine.mysql({
@@ -97,6 +106,7 @@ export class RdsProxyGormStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       deletionProtection: false,
       securityGroups: [dbConnectionGroup],
+      parameterGroup: parameterGroup,
     });
 
     const proxy = rdsInstance.addProxy(id + '-proxy', {
@@ -104,20 +114,13 @@ export class RdsProxyGormStack extends cdk.Stack {
       debugLogging: true,
       vpc,
       securityGroups: [dbConnectionGroup],
+      requireTLS: false,
     });
 
-    // // Workaround for bug where TargetGroupName is not set but required
-    // const targetGroup = proxy.node.children.find((child) => {
-    //   return child instanceof rds.CfnDBProxyTargetGroup;
-    // }) as rds.CfnDBProxyTargetGroup;
-    //
-    // targetGroup.addPropertyOverride('TargetGroupName', 'default');
-
-    // Lambda to Interact with RDS Proxy
     const rdsLambda = new lambda.Function(this, 'rdsProxyHandler', {
-      runtime: lambda.Runtime.NODEJS_12_X,
-      code: lambda.Code.asset('lambda/rds'),
-      handler: 'rdsLambda.handler',
+      runtime: lambda.Runtime.GO_1_X,
+      code: lambda.Code.asset('lambda/out'),
+      handler: 'main',
       vpc: vpc,
       securityGroups: [lambdaToRDSProxyGroup],
       environment: {
@@ -128,7 +131,6 @@ export class RdsProxyGormStack extends cdk.Stack {
 
     databaseCredentialsSecret.grantRead(rdsLambda);
 
-    // defines an API Gateway Http API resource backed by our "rdsLambda" function.
     const api = new apigw.HttpApi(this, 'Endpoint', {
       defaultIntegration: new apigw.LambdaProxyIntegration({
         handler: rdsLambda,
