@@ -14,6 +14,23 @@ export class RdsProxyGormStack extends cdk.Stack {
       maxAzs: 2,
     });
 
+    const bastionGroup = new ec2.SecurityGroup(this, 'Bastion', {
+      vpc,
+    });
+    bastionGroup.addIngressRule(
+      ec2.Peer.ipv4('153.222.44.168/32'),
+      ec2.Port.tcp(22),
+      'allow ssh connection'
+    );
+    new ec2.BastionHostLinux(this, 'BastionHost', {
+      vpc,
+      instanceType: ec2.InstanceType.of(
+        ec2.InstanceClass.T2,
+        ec2.InstanceSize.MICRO
+      ),
+      securityGroup: bastionGroup,
+    });
+
     const lambdaToRDSProxyGroup = new ec2.SecurityGroup(
       this,
       'Lambda to RDS Proxy Connection',
@@ -38,6 +55,11 @@ export class RdsProxyGormStack extends cdk.Stack {
       lambdaToRDSProxyGroup,
       ec2.Port.tcp(3306),
       'allow lambda connection'
+    );
+    dbConnectionGroup.addIngressRule(
+      bastionGroup,
+      ec2.Port.tcp(3306),
+      'allow bastion connection'
     );
 
     const databaseUsername = 'syscdk';
@@ -99,8 +121,8 @@ export class RdsProxyGormStack extends cdk.Stack {
       }),
       credentials: rds.Credentials.fromSecret(databaseCredentialsSecret),
       instanceType: ec2.InstanceType.of(
-        ec2.InstanceClass.BURSTABLE2,
-        ec2.InstanceSize.SMALL
+        ec2.InstanceClass.T2,
+        ec2.InstanceSize.MICRO
       ),
       vpc,
       removalPolicy: cdk.RemovalPolicy.DESTROY,

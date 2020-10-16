@@ -2,15 +2,21 @@ package main
 
 import (
 	"context"
+	// "crypto/tls"
+	// "crypto/x509"
 	"encoding/json"
 	"fmt"
+	// "io/ioutil"
 	"os"
+	// "time"
 
- 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
+	// "github.com/go-sql-driver/mysql"
+
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -58,7 +64,33 @@ func init() {
         "3306",
     )
 
+ 	// rootCertPool := x509.NewCertPool()
+	// pem, err := ioutil.ReadFile("AmazonRootCA1.pem")
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+	// if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
+	// 	fmt.Println("Failed to append PEM.")
+	// }
+    //
+	// mysql.RegisterTLSConfig("custom", &tls.Config{
+	// 	RootCAs: rootCertPool,
+	// })
+    //
+	// host := os.Getenv("PROXY_ENDPOINT") + ":3306"
+	// config := mysql.Config{
+	// 	User: userInfo.UserName,
+	// 	Passwd: userInfo.Password,
+	// 	Net: "tcp",
+	// 	Addr: host,
+ 	// 	Loc: time.Local,
+	// 	ParseTime: true,
+	// 	TLSConfig: "custom",
+	// }
+
+	// dsn := config.FormatDSN()
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	// db, err := gorm.Open(gormMysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		fmt.Println("[ERROR]", err)
 		return

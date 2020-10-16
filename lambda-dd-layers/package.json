@@ -24,7 +24,7 @@
     "@aws-cdk/aws-apigateway": "^1.62.0",
     "@aws-cdk/aws-lambda": "^1.62.0",
     "@aws-cdk/core": "1.62.0",
-    "calc-sample": "file:layers/nodejs/node_modules/calc-sample",
+    "datadog-lambda-js": "^3.33.0",
     "source-map-support": "^0.5.16"
   }
 }
