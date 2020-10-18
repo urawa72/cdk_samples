@@ -1,16 +1,19 @@
 const { datadog, sendDistributionMetric } = require('datadog-lambda-js');
 
-async function handler(event: any, context: any) {
-    sendDistributionMetric(
-        'coffee_house.order_value', // メトリクス名
-        12.45, // メトリクス値
-        'product:latte',
-        'order:online' // 関連付けられたタグ
-    );
+async function myHandler(event: any, context: any) {
+    for(let i = 0; i < 1000; i++) {
+        sendDistributionMetric(
+              'coffee_house.order_value', // メトリクス名
+            Math.random(), // メトリクス値
+            'product:latte',
+            'order:online' // 関連付けられたタグ
+        );
+    }
+
     return {
         statusCode: 200,
         body: 'hello, dog!'
     };
 }
-// ラップする必要があるのは関数ハンドラーだけです（ヘルパー関数ではありません）。
-module.exports.handler = datadog(handler);
+
+module.exports.handler = datadog(myHandler);

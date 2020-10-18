@@ -1,8 +1,8 @@
 {
-  "name": "lambda-layers",
+  "name": "lambda-dd-layers",
   "version": "0.1.0",
   "bin": {
-    "lambda-layers": "bin/lambda-layers.js"
+    "lambda-layers": "bin/lambda-dd-layers.js"
   },
   "scripts": {
     "build": "tsc",
