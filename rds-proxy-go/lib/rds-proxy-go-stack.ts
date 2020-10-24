@@ -4,7 +4,6 @@ import * as lambda from '@aws-cdk/aws-lambda';
 import * as apigw from '@aws-cdk/aws-apigateway';
 import * as rds from '@aws-cdk/aws-rds';
 import * as secrets from '@aws-cdk/aws-secretsmanager';
-// import * as ssm from '@aws-cdk/aws-ssm';
 
 export class RdsProxyGoStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
@@ -16,16 +15,21 @@ export class RdsProxyGoStack extends cdk.Stack {
       cidr: '10.1.0.0/16',
       subnetConfiguration: [
         {
-          name: 'public-1',
+          name: 'public',
           subnetType: ec2.SubnetType.PUBLIC,
           cidrMask: 24,
         },
         {
-          name: 'private-1',
+          name: 'private',
           subnetType: ec2.SubnetType.ISOLATED,
           cidrMask: 24,
         },
       ],
+    });
+
+    new ec2.InterfaceVpcEndpoint(this, 'SecretManagerVpcEndpoint', {
+      vpc: vpc,
+      service: ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
     });
 
     const bastionGroup = new ec2.SecurityGroup(
@@ -57,11 +61,13 @@ export class RdsProxyGoStack extends cdk.Stack {
       ec2.Port.tcp(3306),
       'allow db connection'
     );
+
     dbConnectionGroup.addIngressRule(
       lambdaToRDSProxyGroup,
       ec2.Port.tcp(3306),
       'allow lambda connection'
     );
+
     dbConnectionGroup.addIngressRule(
       bastionGroup,
       ec2.Port.tcp(3306),
@@ -79,8 +85,10 @@ export class RdsProxyGoStack extends cdk.Stack {
         subnetType: ec2.SubnetType.PUBLIC,
       },
     });
+
     host.allowSshAccessFrom(ec2.Peer.ipv4('153.222.44.168/32'));
-    host.instance.addUserData('yum -y update', 'yum install -y mysql');
+
+    host.instance.addUserData('yum -y update', 'yum install -y mysql jq');
 
     const databaseCredentialsSecret = new secrets.Secret(
       this,
@@ -161,7 +169,7 @@ export class RdsProxyGoStack extends cdk.Stack {
       requireTLS: false,
     });
 
-    const rdsLambda = new lambda.Function(this, 'rdsProxyHandler', {
+    const rdsLambda = new lambda.Function(this, 'RdsProxyHandler', {
       runtime: lambda.Runtime.GO_1_X,
       code: lambda.Code.asset('lambda/out'),
       handler: 'main',

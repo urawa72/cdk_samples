@@ -4,101 +4,100 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	// "os"
+	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	// "github.com/aws/aws-sdk-go/aws"
-	// "github.com/aws/aws-sdk-go/aws/session"
-	// "github.com/aws/aws-sdk-go/service/secretsmanager"
-    //
-	// "gorm.io/driver/mysql"
-	// "gorm.io/gorm"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/secretsmanager"
+
+ 	"database/sql"
+ 	_ "github.com/go-sql-driver/mysql"
 )
 
-// type Book struct {
-// 	gorm.Model
-// 	Name  string
-// 	Price int
-// }
-// type UserInfo struct {
-// 	UserName	string	`json:"username"`
-// 	Password	string	`json:"password"`
-// }
-//
-// var userInfo UserInfo
-// var globalDb *gorm.DB
-//
-//
-// func init() {
-//  	session, err := session.NewSession()
-// 	if err != nil {
-//  		fmt.Println("[ERROR]", err)
-// 		return
-// 	}
-//
-// 	svc := secretsmanager.New(session)
-// 	input := secretsmanager.GetSecretValueInput{
-// 		SecretId: aws.String(os.Getenv("RDS_SECRET_NAME")),
-// 	}
-//
-// 	result, err := svc.GetSecretValue(&input)
-// 	if err != nil {
-//  		fmt.Println("[ERROR]", err)
-// 		return
-// 	}
-//
-// 	secrets := *result.SecretString
-// 	json.Unmarshal([]byte(secrets), &userInfo)
-//
-//  	dsn := fmt.Sprintf(
-//         "%s:%s@tcp(%s:%s)/?charset=utf8mb4&parseTime=True&loc=Local",
-//         userInfo.UserName,
-//         userInfo.Password,
-//         os.Getenv("PROXY_ENDPOINT"),
-//         "3306",
-//     )
-//
-// 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-// 	if err != nil {
-// 		fmt.Println("[ERROR]", err)
-// 		return
-// 	}
-// 	globalDb = db
-//
-// 	if result := globalDb.Exec("CREATE DATABASE IF NOT EXISTS gorm_test"); result.Error != nil {
-// 		fmt.Println(result.Error)
-// 		return
-// 	}
-// 	if result := globalDb.Exec("USE gorm_test"); result.Error != nil {
-// 		fmt.Println(result.Error)
-// 		return
-// 	}
-// 	if result := globalDb.Exec("CREATE TABLE IF NOT EXISTS books (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(200), price INT)"); result.Error != nil {
-// 		fmt.Println(result.Error)
-// 		return
-// 	}
-//
-//  	globalDb.AutoMigrate(&Book{})
-// 	globalDb.Exec("DELETE FROM books")
-//  	globalDb.Create(&Book{Name: "AWS 実践入門", Price: 100})
-//  	globalDb.Create(&Book{Name: "A Tour of Go", Price: 1000})
-//  	globalDb.Create(&Book{Name: "思い出の本その１", Price: 100000000})
-// }
+type UserInfo struct {
+	UserName	string	`json:"username"`
+	Password	string	`json:"password"`
+}
+
+type Book struct {
+	Id		int
+	Name	string
+	Price	int
+}
+
+var userInfo UserInfo
+
+func connect() (*sql.DB, error) {
+ 	region := "ap-northeast-1"
+	svc := secretsmanager.New(session.New(), aws.NewConfig().WithRegion(region))
+
+	input := &secretsmanager.GetSecretValueInput{
+		SecretId: aws.String(os.Getenv("RDS_SECRET_NAME")),
+	}
+
+	result, err := svc.GetSecretValue(input)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	secrets := *result.SecretString
+	json.Unmarshal([]byte(secrets), &userInfo)
+
+ 	dsn := fmt.Sprintf(
+        "%s:%s@tcp(%s:%s)/?charset=utf8mb4&parseTime=True&loc=Local",
+        userInfo.UserName,
+        userInfo.Password,
+        os.Getenv("PROXY_ENDPOINT"),
+        "3306",
+    )
+
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		panic(err.Error())
+	}
+	return db, nil
+}
 
 func handleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	jsonReq, _ := json.Marshal(request)
 	fmt.Println(string(jsonReq))
 
-	// var books []Book
-	// if result := globalDb.Find(&books); result.Error != nil {
-	// 	fmt.Println(result.Error)
-	// 	return events.APIGatewayProxyResponse{Body: "Error!", StatusCode: 500}, nil
-	// }
-    //
-	// jsonBooks, _ := json.Marshal(books)
-	// return events.APIGatewayProxyResponse{Body: string(jsonBooks), StatusCode: 200}, nil
-	return events.APIGatewayProxyResponse{Body: "hello lambda!", StatusCode: 200}, nil
+	db, err := connect()
+	if err != nil {
+		fmt.Println("[ERROR]", err)
+ 		return events.APIGatewayProxyResponse{Body: "Error!", StatusCode: 500}, nil
+	}
+	defer db.Close()
+
+	result, err := db.Exec("USE rds_proxy_go")
+	if err != nil {
+		fmt.Println("[ERROR]", err)
+ 		return events.APIGatewayProxyResponse{Body: "Error!", StatusCode: 500}, nil
+	}
+	fmt.Println(result)
+
+	rows, err := db.Query("SELECT * FROM books")
+	if err != nil {
+ 		fmt.Println("[ERROR]", err)
+ 		return events.APIGatewayProxyResponse{Body: "Error!", StatusCode: 500}, nil
+	}
+	defer rows.Close()
+
+	var books []Book
+	for rows.Next() {
+		var book Book
+		err := rows.Scan(&book.Id, &book.Name, &book.Price)
+		if err != nil {
+	 		fmt.Println("[ERROR]", err)
+ 			return events.APIGatewayProxyResponse{Body: "Error!", StatusCode: 500}, nil
+		}
+		books = append(books, book)
+	}
+
+	jsonBooks, _ := json.Marshal(books)
+	return events.APIGatewayProxyResponse{Body: string(jsonBooks), StatusCode: 200}, nil
 }
 
 func main() {
