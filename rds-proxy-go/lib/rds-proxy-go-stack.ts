@@ -27,11 +27,6 @@ export class RdsProxyGoStack extends cdk.Stack {
       ],
     });
 
-    new ec2.InterfaceVpcEndpoint(this, 'SecretManagerVpcEndpoint', {
-      vpc: vpc,
-      service: ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
-    });
-
     const bastionGroup = new ec2.SecurityGroup(
       this,
       'Bastion to DB Connection',
@@ -86,8 +81,6 @@ export class RdsProxyGoStack extends cdk.Stack {
       },
     });
 
-    host.allowSshAccessFrom(ec2.Peer.ipv4('153.222.44.168/32'));
-
     host.instance.addUserData('yum -y update', 'yum install -y mysql jq');
 
     const databaseCredentialsSecret = new secrets.Secret(
@@ -106,40 +99,9 @@ export class RdsProxyGoStack extends cdk.Stack {
       }
     );
 
-    // new ssm.StringParameter(this, 'DBCredentialsArn', {
-    //   parameterName: 'rds-credentials-arn',
-    //   stringValue: databaseCredentialsSecret.secretArn,
-    // });
-
-    // Aurora Cluster
-    // const aurora = new rds.DatabaseCluster(this, 'MySQLAurora', {
-    //   engine: rds.DatabaseClusterEngine.auroraMysql({
-    //     version: rds.AuroraMysqlEngineVersion.VER_2_08_1,
-    //   }),
-    //   credentials: rds.Credentials.fromUsername('syscdk'),
-    //   instanceProps: {
-    //     instanceType: ec2.InstanceType.of(
-    //       ec2.InstanceClass.BURSTABLE2,
-    //       ec2.InstanceSize.SMALL
-    //     ),
-    //     vpc,
-    //   },
-    //   removalPolicy: cdk.RemovalPolicy.DESTROY,
-    //   deletionProtection: false,
-    // });
-    //
-
-    const parameterGroup = new rds.ParameterGroup(this, 'ParameterGroup', {
-      engine: rds.DatabaseInstanceEngine.mysql({
-        version: rds.MysqlEngineVersion.VER_5_7_30,
-      }),
-      parameters: {
-        character_set_client: 'utf8mb4',
-        character_set_connection: 'utf8mb4',
-        character_set_server: 'utf8mb4',
-        character_set_results: 'utf8mb4',
-        character_set_database: 'utf8mb4',
-      },
+    new ec2.InterfaceVpcEndpoint(this, 'SecretManagerVpcEndpoint', {
+      vpc: vpc,
+      service: ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
     });
 
     const rdsInstance = new rds.DatabaseInstance(this, 'DBInstance', {
@@ -155,10 +117,18 @@ export class RdsProxyGoStack extends cdk.Stack {
       vpcSubnets: {
         subnetType: ec2.SubnetType.ISOLATED,
       },
+      securityGroups: [dbConnectionGroup],
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       deletionProtection: false,
-      securityGroups: [dbConnectionGroup],
-      parameterGroup: parameterGroup,
+      parameterGroup: new rds.ParameterGroup(this, 'ParameterGroup', {
+        engine: rds.DatabaseInstanceEngine.mysql({
+          version: rds.MysqlEngineVersion.VER_5_7_30,
+        }),
+        parameters: {
+          character_set_client: 'utf8mb4',
+          character_set_server: 'utf8mb4',
+        },
+      }),
     });
 
     const proxy = rdsInstance.addProxy(id + '-proxy', {
@@ -166,12 +136,11 @@ export class RdsProxyGoStack extends cdk.Stack {
       debugLogging: true,
       vpc,
       securityGroups: [dbConnectionGroup],
-      requireTLS: false,
     });
 
     const rdsLambda = new lambda.Function(this, 'RdsProxyHandler', {
       runtime: lambda.Runtime.GO_1_X,
-      code: lambda.Code.asset('lambda/out'),
+      code: lambda.Code.asset('lambda'),
       handler: 'main',
       vpc: vpc,
       securityGroups: [lambdaToRDSProxyGroup],

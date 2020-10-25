@@ -10,4 +10,4 @@ cdk.out
 # Parcel default cache directory
 .parcel-cache
 
-lambda/out
+lambda/main
