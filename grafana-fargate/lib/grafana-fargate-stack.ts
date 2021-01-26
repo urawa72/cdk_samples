@@ -15,13 +15,13 @@ export class GrafanaFargateStack extends cdk.Stack {
       vpc: vpc,
     });
 
-    const albFargateService = new ecsPatterns.ApplicationLoadBalancedFargateService(
+    const grafanaService = new ecsPatterns.ApplicationLoadBalancedFargateService(
       this,
-      'AlbFargateService',
+      'grafanaService',
       {
         cluster: cluster,
-        memoryLimitMiB: 1024,
-        cpu: 512,
+        memoryLimitMiB: 512,
+        cpu: 256,
         desiredCount: 1,
         taskImageOptions: {
           containerPort: 3000,
@@ -30,7 +30,7 @@ export class GrafanaFargateStack extends cdk.Stack {
       }
     );
 
-    albFargateService.targetGroup.configureHealthCheck({
+    grafanaService.targetGroup.configureHealthCheck({
       path: '/api/health',
     });
   }
